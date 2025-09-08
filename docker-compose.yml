@@ -1,0 +1,98 @@
+services:
+  licensing-db:
+    image: postgres:15-alpine
+    container_name: ${CONTAINER_PREFIX}_db
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    ports:
+      - "${DATABASE_PORT}:${INTERNAL_DATABASE_PORT}"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      interval: ${HEALTH_CHECK_INTERVAL}
+      timeout: ${HEALTH_CHECK_TIMEOUT}
+      retries: ${HEALTH_CHECK_RETRIES}
+      start_period: ${HEALTH_CHECK_START_PERIOD}
+    restart: unless-stopped
+    networks:
+      - eva_licensing_network
+
+  licensing-server:
+    build: .
+    container_name: ${CONTAINER_PREFIX}_server
+    environment:
+      DB_HOST: ${DATABASE_HOST}
+      DB_PORT: ${INTERNAL_DATABASE_PORT}
+      DB_NAME: ${DATABASE_NAME}
+      DB_USER: ${DATABASE_USER}
+      DB_PASSWORD: ${DATABASE_PASSWORD}
+      APP_NAME: ${APP_NAME}
+      APP_VERSION: ${APP_VERSION}
+      ENVIRONMENT: ${ENVIRONMENT}
+      DEBUG: "1"
+      FRONTEND_ORIGINS: ${CORS_ORIGINS}
+      SECRET_KEY: ${SECRET_KEY}
+      LOG_LEVEL: ${LOG_LEVEL}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+    depends_on:
+      licensing-db:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT}:${INTERNAL_BACKEND_PORT}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${INTERNAL_BACKEND_PORT}/health"]
+      interval: ${HEALTH_CHECK_INTERVAL}
+      timeout: ${HEALTH_CHECK_TIMEOUT}
+      retries: ${HEALTH_CHECK_RETRIES}
+      start_period: ${HEALTH_CHECK_START_PERIOD}
+    restart: unless-stopped
+    networks:
+      - eva_licensing_network
+
+  frontend:
+    build: ./frontend
+    container_name: ${CONTAINER_PREFIX}_frontend
+    depends_on:
+      licensing-server:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT}:${INTERNAL_FRONTEND_PORT}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${INTERNAL_FRONTEND_PORT}"]
+      interval: ${HEALTH_CHECK_INTERVAL}
+      timeout: ${HEALTH_CHECK_TIMEOUT}
+      retries: ${HEALTH_CHECK_RETRIES}
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - eva_licensing_network
+
+  # Optional: Run this service to create demo organization and API key
+  # Usage: docker-compose run --rm fresh-setup
+  fresh-setup:
+    build: .
+    container_name: ${CONTAINER_PREFIX}_fresh_setup
+    environment:
+      DB_HOST: ${DATABASE_HOST}
+      DB_PORT: ${INTERNAL_DATABASE_PORT}
+      DB_NAME: ${DATABASE_NAME}
+      DB_USER: ${DATABASE_USER}
+      DB_PASSWORD: ${DATABASE_PASSWORD}
+    depends_on:
+      licensing-server:
+        condition: service_healthy
+    command: ["python", "scripts/init_fresh_setup.py"]
+    profiles: ["setup"]
+    networks:
+      - eva_licensing_network
+
+volumes:
+  dbdata:
+
+networks:
+  eva_licensing_network:
+    driver: bridge
+

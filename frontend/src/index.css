@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+}
+
+/* Custom animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #0ea5e9 0%, #22c55e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Enterprise card hover effect */
+.enterprise-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.enterprise-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Button animations */
+.btn-primary {
+  @apply bg-eva-600 hover:bg-eva-700 text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl;
+}
+
+.btn-secondary {
+  @apply bg-transparent border-2 border-eva-600 text-eva-600 hover:bg-eva-600 hover:text-white font-semibold py-3 px-8 rounded-full transition-all duration-300;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 2px solid #f3f4f6;
+  border-top: 2px solid #0ea5e9;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive typography */
+@media (max-width: 640px) {
+  .hero-title {
+    font-size: 2.5rem;
+    line-height: 1.1;
+  }
+}
+
+@media (min-width: 768px) {
+  .hero-title {
+    font-size: 4rem;
+    line-height: 1.1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-title {
+    font-size: 5rem;
+    line-height: 1.1;
+  }
+}
+
+/* Custom focus styles */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-eva-500 focus:ring-offset-2;
+}
+
+/* Status indicators */
+.status-active {
+  @apply bg-green-100 text-green-800 border border-green-200;
+}
+
+.status-inactive {
+  @apply bg-red-100 text-red-800 border border-red-200;
+}
+
+.status-pending {
+  @apply bg-yellow-100 text-yellow-800 border border-yellow-200;
+}
+
+/* Card styles */
+.feature-card {
+  @apply bg-white rounded-2xl p-8 shadow-enterprise hover:shadow-enterprise-lg transition-all duration-300 border border-gray-100;
+}
+
+.pricing-card {
+  @apply bg-white rounded-2xl p-8 shadow-enterprise-lg border-2 transition-all duration-300;
+}
+
+.pricing-card.featured {
+  @apply border-eva-500 shadow-licensing;
+}
+
+/* Utility classes */
+.text-gradient {
+  @apply bg-gradient-to-r from-eva-600 to-ecogo-600 bg-clip-text text-transparent;
+}
+
+.bg-gradient-primary {
+  @apply bg-gradient-to-br from-eva-600 via-eva-700 to-eva-800;
+}
+
+.bg-gradient-secondary {
+  @apply bg-gradient-to-br from-ecogo-600 via-ecogo-700 to-ecogo-800;
+}
