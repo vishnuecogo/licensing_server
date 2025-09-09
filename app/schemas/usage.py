@@ -41,21 +41,34 @@ class UsageStatsResponse(BaseModel):
     """Response schema for usage statistics"""
     org_id: int
     year_month: str
-    
-    # Token Usage
+
+    # Token Usage by Provider
     total_deepseek_tokens: int
     total_openai_tokens: int
+
+    # Model-Specific Token Usage
+    gpt_vision_tokens: int
+    text_embedding_tokens: int
+    chat_completion_tokens: int
+
+    # Cost Tracking
     total_cost: float
-    
+    deepseek_cost: float
+    openai_cost: float
+    gpt_vision_cost: float
+    embedding_cost: float
+
     # Message Counts
     incoming_messages: int
     bot_responses: int
     unique_users: int
-    
+
     # Feature Usage
     intent_analyses: int
     rag_queries: int
     style_analyses: int
+    files_processed: int
+    vision_analyses: int
 
 class UserActivityResponse(BaseModel):
     """Response schema for user activity"""

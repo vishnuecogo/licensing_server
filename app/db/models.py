@@ -83,10 +83,21 @@ class MonthlyUsageSummary(Base):
     org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     year_month = Column(String(7), nullable=False)  # '2024-01'
 
-    # Token Usage
+    # Token Usage by Provider
     total_deepseek_tokens = Column(BigInteger, default=0)
     total_openai_tokens = Column(BigInteger, default=0)
+
+    # Model-Specific Token Usage
+    gpt_vision_tokens = Column(BigInteger, default=0)
+    text_embedding_tokens = Column(BigInteger, default=0)
+    chat_completion_tokens = Column(BigInteger, default=0)
+
+    # Cost Tracking
     total_cost = Column(Numeric(10, 2), default=0)
+    deepseek_cost = Column(Numeric(10, 4), default=0)
+    openai_cost = Column(Numeric(10, 4), default=0)
+    gpt_vision_cost = Column(Numeric(10, 4), default=0)
+    embedding_cost = Column(Numeric(10, 4), default=0)
 
     # Message Counts
     incoming_messages = Column(BigInteger, default=0)
@@ -97,6 +108,10 @@ class MonthlyUsageSummary(Base):
     intent_analyses = Column(BigInteger, default=0)
     rag_queries = Column(BigInteger, default=0)
     style_analyses = Column(BigInteger, default=0)
+
+    # File Processing Usage
+    files_processed = Column(BigInteger, default=0)
+    vision_analyses = Column(BigInteger, default=0)
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

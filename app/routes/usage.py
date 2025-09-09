@@ -24,11 +24,32 @@ def calculate_token_cost(provider: str, model: str, prompt_tokens: int, completi
         output_cost = completion_tokens * 0.28 / 1000000
         return input_cost + output_cost
     elif provider.lower() == "openai":
-        if "embedding" in model.lower():
-            # OpenAI embedding pricing: $0.02 per 1M tokens
+        model_lower = model.lower()
+        if "embedding" in model_lower or "text-embedding" in model_lower:
+            # OpenAI embedding pricing: $0.02 per 1M tokens (text-embedding-3-small/large)
             return prompt_tokens * 0.02 / 1000000
+        elif "gpt-4o" in model_lower or "vision" in model_lower:
+            # GPT-4o Vision pricing: $2.50 per 1M input tokens, $10.00 per 1M output tokens
+            input_cost = prompt_tokens * 2.50 / 1000000
+            output_cost = completion_tokens * 10.00 / 1000000
+            return input_cost + output_cost
+        elif "gpt-4o-mini" in model_lower:
+            # GPT-4o Mini pricing: $0.15 per 1M input tokens, $0.60 per 1M output tokens
+            input_cost = prompt_tokens * 0.15 / 1000000
+            output_cost = completion_tokens * 0.60 / 1000000
+            return input_cost + output_cost
+        elif "gpt-4" in model_lower:
+            # GPT-4 pricing: $30.00 per 1M input tokens, $60.00 per 1M output tokens
+            input_cost = prompt_tokens * 30.00 / 1000000
+            output_cost = completion_tokens * 60.00 / 1000000
+            return input_cost + output_cost
+        elif "gpt-3.5" in model_lower:
+            # GPT-3.5 Turbo pricing: $0.50 per 1M input tokens, $1.50 per 1M output tokens
+            input_cost = prompt_tokens * 0.50 / 1000000
+            output_cost = completion_tokens * 1.50 / 1000000
+            return input_cost + output_cost
         else:
-            # OpenAI chat pricing (varies by model, using GPT-3.5 as default)
+            # Default OpenAI chat pricing (using GPT-3.5 as fallback)
             input_cost = prompt_tokens * 0.50 / 1000000
             output_cost = completion_tokens * 1.50 / 1000000
             return input_cost + output_cost
@@ -204,76 +225,80 @@ def process_token_usage(usage_data: TokenUsageData):
                 year_month=current_month,
                 total_deepseek_tokens=0,
                 total_openai_tokens=0,
+                gpt_vision_tokens=0,
+                text_embedding_tokens=0,
+                chat_completion_tokens=0,
                 total_cost=0,
+                deepseek_cost=0,
+                openai_cost=0,
+                gpt_vision_cost=0,
+                embedding_cost=0,
                 incoming_messages=0,
                 bot_responses=0,
                 unique_users=0,
                 intent_analyses=0,
                 rag_queries=0,
-                style_analyses=0
+                style_analyses=0,
+                files_processed=0,
+                vision_analyses=0
             )
             db.add(monthly_summary)
             db.flush()  # Ensure the record is created before we use it
-
-        # Update message counts based on message type
-        if activity_data.message_type == "incoming":
-            monthly_summary.incoming_messages += 1
-        elif activity_data.message_type == "outgoing":
-            monthly_summary.bot_responses += 1
-
-        # Update unique users count if this is a new user
-        user_activity = db.query(UserActivity).filter(
-            UserActivity.org_id == activity_data.org_id,
-            UserActivity.year_month == current_month,
-            UserActivity.user_jid == activity_data.user_jid
-        ).first()
-
-        if not user_activity:
-            # This is a new user for this month
-            monthly_summary.unique_users += 1
-            user_activity = UserActivity(
-                org_id=activity_data.org_id,
-                year_month=current_month,
-                user_jid=activity_data.user_jid,
-                message_count=0,
-                total_tokens=0,
-                last_message_time=datetime.now()
-            )
-            db.add(user_activity)
-
-        # Update user activity
-        user_activity.message_count += 1
-        user_activity.last_message_time = datetime.now()
-
-        try:
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            print(f"Error tracking message activity: {str(e)}")
-        finally:
-            db.close()
 
         # Ensure all fields are not None (handle existing records with NULL values)
         if monthly_summary.total_deepseek_tokens is None:
             monthly_summary.total_deepseek_tokens = 0
         if monthly_summary.total_openai_tokens is None:
             monthly_summary.total_openai_tokens = 0
-        if monthly_summary.total_cost is None:
-            monthly_summary.total_cost = 0
+        if monthly_summary.gpt_vision_tokens is None:
+            monthly_summary.gpt_vision_tokens = 0
+        if monthly_summary.text_embedding_tokens is None:
+            monthly_summary.text_embedding_tokens = 0
+        if monthly_summary.chat_completion_tokens is None:
+            monthly_summary.chat_completion_tokens = 0
 
-        # Update token counts based on provider
-        if usage_data.llm_provider == "deepseek":
+        # Update token counts based on provider and model
+        if usage_data.llm_provider.lower() == "deepseek":
             monthly_summary.total_deepseek_tokens += usage_data.total_tokens
-        elif usage_data.llm_provider == "openai":
+            monthly_summary.chat_completion_tokens += usage_data.total_tokens
+        elif usage_data.llm_provider.lower() == "openai":
             monthly_summary.total_openai_tokens += usage_data.total_tokens
 
-        # Ensure total_cost is not None and handle Decimal type properly
+            # Categorize by model type
+            model_lower = usage_data.llm_model.lower()
+            if "embedding" in model_lower or "text-embedding" in model_lower:
+                monthly_summary.text_embedding_tokens += usage_data.total_tokens
+            elif "gpt-4o" in model_lower or "vision" in model_lower:
+                monthly_summary.gpt_vision_tokens += usage_data.total_tokens
+            else:
+                monthly_summary.chat_completion_tokens += usage_data.total_tokens
+
+        # Update cost tracking
         from decimal import Decimal
         if monthly_summary.total_cost is None:
             monthly_summary.total_cost = Decimal('0')
+        if monthly_summary.deepseek_cost is None:
+            monthly_summary.deepseek_cost = Decimal('0')
+        if monthly_summary.openai_cost is None:
+            monthly_summary.openai_cost = Decimal('0')
+        if monthly_summary.gpt_vision_cost is None:
+            monthly_summary.gpt_vision_cost = Decimal('0')
+        if monthly_summary.embedding_cost is None:
+            monthly_summary.embedding_cost = Decimal('0')
 
-        # Convert both to Decimal to avoid type mismatch
-        monthly_summary.total_cost += Decimal(str(estimated_cost))
+        # Add cost to appropriate category
+        cost_decimal = Decimal(str(estimated_cost))
+        monthly_summary.total_cost += cost_decimal
+
+        if usage_data.llm_provider.lower() == "deepseek":
+            monthly_summary.deepseek_cost += cost_decimal
+        elif usage_data.llm_provider.lower() == "openai":
+            monthly_summary.openai_cost += cost_decimal
+            model_lower = usage_data.llm_model.lower()
+            if "embedding" in model_lower or "text-embedding" in model_lower:
+                monthly_summary.embedding_cost += cost_decimal
+            elif "gpt-4o" in model_lower or "vision" in model_lower:
+                monthly_summary.gpt_vision_cost += cost_decimal
 
         # Update feature usage counts
         if usage_data.request_type == "intent_analysis":
@@ -284,6 +309,10 @@ def process_token_usage(usage_data: TokenUsageData):
             monthly_summary.style_analyses += 1
         elif usage_data.request_type == "conversation":
             monthly_summary.bot_responses += 1
+        elif usage_data.request_type == "vision_analysis" or "vision" in usage_data.llm_model.lower():
+            monthly_summary.vision_analyses += 1
+        elif usage_data.request_type == "file_processing":
+            monthly_summary.files_processed += 1
 
         # Update user activity if user_jid is provided
         if usage_data.user_jid:
@@ -620,26 +649,44 @@ def get_usage_trends(
                 "month": month,
                 "total_deepseek_tokens": data.total_deepseek_tokens,
                 "total_openai_tokens": data.total_openai_tokens,
+                "gpt_vision_tokens": data.gpt_vision_tokens or 0,
+                "text_embedding_tokens": data.text_embedding_tokens or 0,
+                "chat_completion_tokens": data.chat_completion_tokens or 0,
                 "total_cost": float(data.total_cost),
+                "deepseek_cost": float(data.deepseek_cost or 0),
+                "openai_cost": float(data.openai_cost or 0),
+                "gpt_vision_cost": float(data.gpt_vision_cost or 0),
+                "embedding_cost": float(data.embedding_cost or 0),
                 "incoming_messages": data.incoming_messages,
                 "bot_responses": data.bot_responses,
                 "unique_users": data.unique_users,
                 "intent_analyses": data.intent_analyses,
                 "rag_queries": data.rag_queries,
-                "style_analyses": data.style_analyses
+                "style_analyses": data.style_analyses,
+                "files_processed": data.files_processed or 0,
+                "vision_analyses": data.vision_analyses or 0
             })
         else:
             trends.append({
                 "month": month,
                 "total_deepseek_tokens": 0,
                 "total_openai_tokens": 0,
+                "gpt_vision_tokens": 0,
+                "text_embedding_tokens": 0,
+                "chat_completion_tokens": 0,
                 "total_cost": 0.0,
+                "deepseek_cost": 0.0,
+                "openai_cost": 0.0,
+                "gpt_vision_cost": 0.0,
+                "embedding_cost": 0.0,
                 "incoming_messages": 0,
                 "bot_responses": 0,
                 "unique_users": 0,
                 "intent_analyses": 0,
                 "rag_queries": 0,
-                "style_analyses": 0
+                "style_analyses": 0,
+                "files_processed": 0,
+                "vision_analyses": 0
             })
 
     return {
@@ -731,5 +778,93 @@ def get_cost_breakdown(
         "hourly_usage_pattern": hourly_pattern,
         "total_cost": sum(service["total_cost"] for service in breakdown_by_service.values()),
         "total_tokens": sum(service["total_tokens"] for service in breakdown_by_service.values())
+    }
+
+
+@router.get("/analytics/model-breakdown/{org_id}")
+def get_model_breakdown(
+    org_id: int,
+    month: Optional[str] = None,  # Format: YYYY-MM
+    auth_header: str = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    """Get detailed breakdown by AI model type including new model-specific tracking"""
+    organization, api_key_obj = validate_analytics_access(org_id, auth_header, db)
+
+    if not month:
+        month = datetime.now().strftime("%Y-%m")
+
+    # Get monthly summary with model-specific data
+    monthly_summary = db.query(MonthlyUsageSummary).filter(
+        MonthlyUsageSummary.org_id == org_id,
+        MonthlyUsageSummary.year_month == month
+    ).first()
+
+    if not monthly_summary:
+        return {
+            "organization_id": org_id,
+            "organization_name": organization.name,
+            "month": month,
+            "model_breakdown": {},
+            "cost_breakdown": {},
+            "feature_usage": {},
+            "total_cost": 0.0,
+            "total_tokens": 0
+        }
+
+    # Model-specific token breakdown
+    model_breakdown = {
+        "deepseek": {
+            "tokens": monthly_summary.total_deepseek_tokens or 0,
+            "cost": float(monthly_summary.deepseek_cost or 0),
+            "description": "DeepSeek chat completions and responses"
+        },
+        "gpt_vision": {
+            "tokens": monthly_summary.gpt_vision_tokens or 0,
+            "cost": float(monthly_summary.gpt_vision_cost or 0),
+            "description": "GPT-4 Vision for image processing and analysis"
+        },
+        "text_embedding": {
+            "tokens": monthly_summary.text_embedding_tokens or 0,
+            "cost": float(monthly_summary.embedding_cost or 0),
+            "description": "OpenAI text embeddings for search and RAG"
+        },
+        "chat_completion": {
+            "tokens": monthly_summary.chat_completion_tokens or 0,
+            "cost": float(monthly_summary.openai_cost or 0) - float(monthly_summary.gpt_vision_cost or 0) - float(monthly_summary.embedding_cost or 0),
+            "description": "OpenAI chat completions (GPT-4, GPT-3.5, etc.)"
+        }
+    }
+
+    # Cost breakdown by provider
+    cost_breakdown = {
+        "deepseek": float(monthly_summary.deepseek_cost or 0),
+        "openai_total": float(monthly_summary.openai_cost or 0),
+        "openai_vision": float(monthly_summary.gpt_vision_cost or 0),
+        "openai_embeddings": float(monthly_summary.embedding_cost or 0),
+        "openai_chat": float(monthly_summary.openai_cost or 0) - float(monthly_summary.gpt_vision_cost or 0) - float(monthly_summary.embedding_cost or 0)
+    }
+
+    # Feature usage statistics
+    feature_usage = {
+        "files_processed": monthly_summary.files_processed or 0,
+        "vision_analyses": monthly_summary.vision_analyses or 0,
+        "intent_analyses": monthly_summary.intent_analyses or 0,
+        "rag_queries": monthly_summary.rag_queries or 0,
+        "style_analyses": monthly_summary.style_analyses or 0,
+        "incoming_messages": monthly_summary.incoming_messages or 0,
+        "bot_responses": monthly_summary.bot_responses or 0,
+        "unique_users": monthly_summary.unique_users or 0
+    }
+
+    return {
+        "organization_id": org_id,
+        "organization_name": organization.name,
+        "month": month,
+        "model_breakdown": model_breakdown,
+        "cost_breakdown": cost_breakdown,
+        "feature_usage": feature_usage,
+        "total_cost": float(monthly_summary.total_cost or 0),
+        "total_tokens": (monthly_summary.total_deepseek_tokens or 0) + (monthly_summary.total_openai_tokens or 0)
     }
 
