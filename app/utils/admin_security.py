@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 from passlib.context import CryptContext
 import jwt
+from fastapi import HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
@@ -24,4 +26,33 @@ def create_access_token(subject: str, role: str, expires_delta: Optional[timedel
 
 def decode_token(token: str):
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+
+security = HTTPBearer()
+
+
+def require_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Dependency to require admin authentication"""
+    try:
+        token = credentials.credentials
+        payload = decode_token(token)
+        role = payload.get("role")
+
+        if role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin access required"
+            )
+
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
 

@@ -7,7 +7,7 @@ from app.routes import auth as auth_routes
 from app.routes import usage as usage_routes
 from app.routes import admin as admin_routes, analytics, plans, admin_analytics
 from app.routes import organization as organization_routes
-from app.routes import admin_licensing
+# from app.routes import admin_licensing  # Temporarily disabled
 from app.config import APP_NAME, FRONTEND_ORIGINS
 
 # Tables are created via Docker entrypoint script
@@ -33,7 +33,7 @@ app.include_router(admin_analytics.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
 app.include_router(plans.router, prefix="/api")
 app.include_router(organization_routes.router, prefix="/api")
-app.include_router(admin_licensing.router, prefix="/api/admin/licensing", tags=["Admin Licensing"])
+# app.include_router(admin_licensing.router, prefix="/api/admin/licensing", tags=["Admin Licensing"])  # Temporarily disabled
 
 @app.get("/")
 def root():
