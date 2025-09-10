@@ -14,8 +14,16 @@ class Organization(Base):
     login_email = Column(String(255), unique=True, nullable=True)  # Organization login email
     password_hash = Column(String(255), nullable=True)  # Hashed password for organization login
     can_reset_password = Column(Boolean, default=True)  # Allow password reset
-    status = Column(String(50), default="active")  # active, blocked
+    status = Column(String(50), default="active")  # active, disabled, suspended, blocked
+    # Enhanced status tracking
+    disabled_at = Column(DateTime, nullable=True)  # When organization was disabled
+    disabled_reason = Column(String(500), nullable=True)  # Reason for disabling
+    last_activity_at = Column(DateTime, nullable=True)  # Last activity timestamp
+    # Quota enforcement
+    auto_disable_on_quota_exceeded = Column(Boolean, default=True)  # Auto-disable when quota exceeded
+    quota_warning_sent = Column(Boolean, default=False)  # Warning notification sent
     created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 class Plan(Base):
     __tablename__ = "plans"
@@ -32,7 +40,14 @@ class ApiKey(Base):
     org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     key_hash = Column(String(64), unique=True, nullable=False)  # SHA256 hex
     active = Column(Boolean, default=True)
+    # Enhanced API key tracking
+    disabled_at = Column(DateTime, nullable=True)  # When API key was disabled
+    disabled_reason = Column(String(500), nullable=True)  # Reason for disabling (quota_exceeded, manual, etc.)
+    auto_disabled = Column(Boolean, default=False)  # Whether it was auto-disabled
+    last_used_at = Column(DateTime, nullable=True)  # Last usage timestamp
+    total_requests = Column(BigInteger, default=0)  # Total requests made with this key
     created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     organization = relationship("Organization")
 
