@@ -31,7 +31,11 @@ def get_db():
 
 
 @router.get("/verify")
-def verify(auth_header: str = Header(None, alias="Authorization"), db: Session = Depends(get_db)):
+def verify(
+    auth_header: str = Header(None, alias="Authorization"),
+    check_only: bool = False,
+    db: Session = Depends(get_db)
+):
     if not auth_header or not auth_header.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
 
@@ -109,7 +113,7 @@ def verify(auth_header: str = Header(None, alias="Authorization"), db: Session =
         pass
 
     # 2) Fallback: treat as API key (backend usage / server-to-server)
-    api_key_row, payload = verify_license(db, token_or_key)
+    api_key_row, payload = verify_license(db, token_or_key, increment_usage=not check_only)
 
     # Map None to -1 for unlimited if you prefer clients to treat -1 as unlimited
     quota = payload.get("quota_remaining")

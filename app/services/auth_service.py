@@ -6,7 +6,7 @@ from datetime import datetime
 from app.db import models
 
 
-def verify_license(db: Session, api_key_plain: str) -> Tuple[Optional[models.ApiKey], Dict]:
+def verify_license(db: Session, api_key_plain: str, increment_usage: bool = True) -> Tuple[Optional[models.ApiKey], Dict]:
     """Verify the API key and return comprehensive license status payload.
 
     Returns (api_key_row, payload_dict)
@@ -30,8 +30,8 @@ def verify_license(db: Session, api_key_plain: str) -> Tuple[Optional[models.Api
             "error": "API key not found"
         }
 
-    # Update last_used_at for valid API key
-    if api_key_row.active:
+    # Update last_used_at for valid API key only if incrementing usage
+    if api_key_row.active and increment_usage:
         api_key_row.last_used_at = datetime.utcnow()
         api_key_row.total_requests = (api_key_row.total_requests or 0) + 1
         db.commit()
@@ -67,9 +67,10 @@ def verify_license(db: Session, api_key_plain: str) -> Tuple[Optional[models.Api
             "error": "Organization not found"
         }
 
-    # Update organization last activity
-    org.last_activity_at = datetime.utcnow()
-    db.commit()
+    # Update organization last activity only if incrementing usage
+    if increment_usage:
+        org.last_activity_at = datetime.utcnow()
+        db.commit()
 
     # Check organization status
     if org.status != "active":
