@@ -112,6 +112,9 @@ const CustomPlanManagement = ({ organization, onUpdate, showMessage }) => {
   };
 
   const formatQuota = (quota) => {
+    if (quota === null || quota === undefined) {
+      return 'Unlimited';
+    }
     if (quota >= 1000000) {
       return `${(quota / 1000000).toFixed(1)}M`;
     } else if (quota >= 1000) {

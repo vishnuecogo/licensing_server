@@ -74,6 +74,9 @@ const UsageAnalyticsDashboard = ({ organizationId, organizationName, showMessage
   };
 
   const formatNumber = (num) => {
+    if (num === null || num === undefined) {
+      return 'N/A';
+    }
     return new Intl.NumberFormat('en-US').format(num);
   };
 
@@ -286,6 +289,9 @@ const MetricCard = ({ title, value, icon, color, subtitle }) => (
 
 const FeatureCard = ({ title, value, icon, description }) => {
   const formatNumber = (num) => {
+    if (num === null || num === undefined) {
+      return 'N/A';
+    }
     return new Intl.NumberFormat('en-US').format(num);
   };
 
@@ -312,6 +318,9 @@ const ServiceBreakdownCard = ({ service }) => {
   };
 
   const formatNumber = (num) => {
+    if (num === null || num === undefined) {
+      return 'N/A';
+    }
     return new Intl.NumberFormat('en-US').format(num);
   };
 

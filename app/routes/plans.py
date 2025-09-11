@@ -6,6 +6,7 @@ from typing import Optional
 from app.db.database import SessionLocal
 from app.db.models import Plan, Organization, Subscription
 from app.routes.admin import get_admin
+from app.services.auth_service import auto_enable_quota_disabled_keys
 
 router = APIRouter(prefix="/admin/plan-management", tags=["Plan Management"])
 
@@ -289,9 +290,17 @@ def assign_plan_to_organization(org_id: int, plan_id: int, db: Session = Depends
         db.add(subscription)
     
     db.commit()
-    
+
+    # Auto-enable API keys that were disabled due to quota exceeded
+    enabled_count = auto_enable_quota_disabled_keys(db, org_id)
+
+    message = f"Plan '{plan.name}' assigned to '{organization.name}'"
+    if enabled_count > 0:
+        message += f" and {enabled_count} API key(s) re-enabled"
+
     return {
-        "message": f"Plan '{plan.name}' assigned to '{organization.name}'",
+        "message": message,
         "organization": organization,
-        "plan": plan
+        "plan": plan,
+        "api_keys_enabled": enabled_count
     }

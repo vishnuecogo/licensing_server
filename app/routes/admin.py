@@ -9,6 +9,7 @@ from app.db.models import Organization, Plan, Subscription, ApiKey, UsageLog, Mo
 from app.utils.admin_security import verify_password, hash_password, create_access_token, decode_token
 from app.services.unified_auth import authenticate_user, get_user_from_token
 from app.utils.security import sha256_hex
+from app.services.auth_service import auto_enable_quota_disabled_keys
 import secrets
 import string
 
@@ -248,7 +249,8 @@ def update_org(org_id: int, body: OrgBody, db = Depends(get_db), admin = Depends
         raise HTTPException(status_code=404, detail="Not found")
 
     # If plan_tier is changing, update subscription
-    if org.plan_tier != body.plan_tier:
+    plan_changed = org.plan_tier != body.plan_tier
+    if plan_changed:
         # Find the new plan
         new_plan = db.query(Plan).filter(Plan.name == body.plan_tier).first()
         if not new_plan:
@@ -276,6 +278,11 @@ def update_org(org_id: int, body: OrgBody, db = Depends(get_db), admin = Depends
     org.contact_email = body.contact_email
     org.status = body.status
     db.commit()
+
+    # Auto-enable API keys that were disabled due to quota exceeded if plan changed
+    if plan_changed:
+        auto_enable_quota_disabled_keys(db, org_id)
+
     db.refresh(org)
     return org
 

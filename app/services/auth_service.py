@@ -271,3 +271,22 @@ def enable_api_key(db: Session, api_key_id: int) -> bool:
     print(f"✅ API key {api_key_id} enabled")
     return True
 
+
+def auto_enable_quota_disabled_keys(db: Session, org_id: int) -> int:
+    """Auto-enable API keys that were disabled due to quota exceeded when plan is upgraded"""
+    # Find all API keys for this organization that were auto-disabled due to quota
+    disabled_keys = db.query(models.ApiKey).filter(
+        models.ApiKey.org_id == org_id,
+        models.ApiKey.active == False,
+        models.ApiKey.auto_disabled == True,
+        models.ApiKey.disabled_reason.like("Quota exceeded%")
+    ).all()
+
+    enabled_count = 0
+    for api_key in disabled_keys:
+        if enable_api_key(db, api_key.id):
+            enabled_count += 1
+            print(f"🔄 Auto-enabled API key {api_key.id} after plan upgrade")
+
+    return enabled_count
+
